@@ -1,15 +1,32 @@
 name: CI
-on: [push]
+on:
+  workflow_dispatch:
+    inputs:
+      test-filter:
+        description: 'Optional test file selector passed to node --test'
+        required: false
+        default: ''
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        node: ['18', '20']
+        node: ['24', '18', '20']
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node }}
+      - run: npm config set registry 'https://:2026-09-14T21%3A51%3A10.067Z@time-machines-npm.sealsecurity.io/'
       - run: npm ci
-      - run: npm test
+      - run: npm pack
+        if: matrix.node == '24'
+      - uses: actions/upload-artifact@v4
+        if: matrix.node == '24'
+        with:
+          name: brace-expansion-tgz
+          path: brace-expansion-*.tgz
+          if-no-files-found: error
+      - run: npm test -- ${{ inputs.test-filter }}
